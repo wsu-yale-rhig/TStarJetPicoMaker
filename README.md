@@ -1,4 +1,4 @@
-##TStarJetPicoMaker
+## TStarJetPicoMaker
 
 **STAR Collaboration**
 
@@ -20,7 +20,7 @@ already. If you want to update, they are kept as submodules
 in external/. You can initialize the submodules via 
 ```git submodule update --init --recursive```
 
-##Usage
+## Usage
 
 After cloning the repository, you can use 
 
