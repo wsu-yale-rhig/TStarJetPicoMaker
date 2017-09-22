@@ -1,0 +1,104 @@
+Changes to TStarJetPico event structure and associated functions
+Nick Elsey
+
+to do:
+1) better testing. It runs without crashing!
+2) Masking events where triggers are hot towers? (on hold.
+Can't find out which tower fired which trigger)
+
+finished testing:
+1) run number exclusion
+2) phi cut for tracks and towers
+   a) problem? tracks that are not accepted are not used for tower
+   hadronic correction
+3) setting tower ID in the output container. tracks are tower ID -1.
+4) setting hot and dead towers
+5) masking hot and dead towers in output container
+6) switching to CorRefMult for y11 specifically - doesn't check to see
+if the leaf is populated, only that it exists. Currently checks to see
+if the trigger selection includes ALL, MB or HT, if so it is used.
+7) cent def selection is correct
+
+
+
+completed:
+
+1) TStarJetPicoReader
+   a) For bad run masking
+	1)  header - added functions void AddMaskedRun(int) and void AddMaskedRuns(vector<int>)
+   	2)  header - added vector<int> fMaskedRuns
+	3)  implementation - added a line in the function
+   TStarJetPicoReader::LoadEvent() that returns false if the event has
+   a RunId in the list of masked runs.
+
+   b) phi range restriction
+      	1) in  TStarJetPicoReader::LoadTowers() and TStarJetPicoReader::LoadTracks(),
+      	functionality has been added to reject towers and tracks based
+      	on their phi value. The phi range is stored in the reader's
+      	TStarJetPicoTowerCuts and TStarJetPicoTrackCuts
+
+   c) hot and dead tower masking
+       1)  in TStarJetPicoReader::LoadTowers(), a call to
+       TStarJetPicoTowerCuts::CheckTowerAgainstLists() has been
+       added. If it returns false, the tower is rejected.
+
+    d) setting tower ID in TStarJetVector output
+       1) for peace of mind, I set the Tower ID as the
+       TStarJetVector::SetTowerID() in TStarJetVector::LoadTowers()
+       2) this was originally supposed to let us tag triggers, but the
+       trigger information doesn't seem to have been correctly
+       propogated to the data files, and it didn't work out.
+
+2) TStarJetPicoEventCuts
+   a) changes to refMult cut for y11 data
+      1)  TStarJetPicoEventCuts::IsRefMultOK(TStarJetPicoEvent*) has
+   been modified to
+   TStarJetPicoEventCuts::IsRefMultOK(TStarJetPicoEvent*, TChain*)
+   The TChain* is the reader's input tree. This is to allow
+   IsRefMultOK() search for the fEventHeader.CorRefMult leaf in the
+   input chain. If it's present, and the data is y11, CorRefMult is
+   returned. Else, RefMult is returned (with an exception for run 10)
+   This change to the function definition has been propagated through
+   the code.
+
+   b) implement a centrality cut
+      1) header - defined
+      TStarJetPicoEventCuts::SetReferenceCentralityCut(int, int)
+      and GetRefCentMin(), GetRefCentMax()
+      2) added fRefCentMin, fRefCentMax
+      3) added the function
+      TStarJetPicoEventCuts::IsRefCentOK(TStarJetPicoEvent*,TChain*)
+      which checks to see if the values have been changed from
+      defaults. If so, it makes sure the fEventHeader.fRefCent leaf is
+      valid, and checks the centrality. Returns false if the
+      centrality is not between min/max values. This has been added
+      TStarJetPicoEventCuts::IsEventOK(), so it is checked for every
+      event.
+      
+      
+3) TStarJetPicoTrackCuts
+   a) phi range restriction
+      1) added to header fPhiMin, fPhiMax, and associated get and set
+   functions
+      2) these values are called from TStarJetPicoReader::LoadTracks()
+   and handled there.
+
+4) TStarJetPicoTowerCuts
+   a) phi range restriction
+      1) added to header fPhiMin, fPhiMax, and associated get and set
+   functions
+      2) these values are called from TStarJetPicoReader::LoadTracks()
+   and handled there.
+   b) hot and dead tower lists
+      1) added vector<int> fHotTowers and vector<int> fDeadTowers
+      2) added AddHotTower(int) AddHotTowers(vector<int>)
+   AddDeadTower(int) AddDeadTowers(vector<int>) these check to make
+   sure the values passed are in the range [1, 4800], then adds them
+   to fHotTowers or fDeadTowers
+   c) added function TStarJetPicoTowerCuts::CheckTowerAgainstLists(int),
+   it checks the tower ID against both the hot and dead tower
+   lists. If it is found, it returns false, else, returns true. This
+   is called in TStarJetPicoReader::LoadTowers() (see above)
+
+5) various debug and error calls added to aid in testing, some logic checks in
+setting functions added

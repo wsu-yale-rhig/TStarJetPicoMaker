@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE note [
+<!ENTITY NFILES "all">
+<!ENTITY DAYNR "101-105">
+<!ENTITY PROD "P17id">
+<!ENTITY TRGSETUP "AuAu_200_production_mid_2014">
+<!ENTITY FILETYPE "daq_reco_MuDst">
+<!ENTITY ROOTDIR "">
+<!ENTITY OUTDIR "">
+<!ENTITY TRIGGERS "">
+]>
+
+<!--             STAR Collaboration - Nick Elsey             -->
+<!--
+ Script to query STAR catalogue and split the resulting
+ file list into regularly sized jobs for TStarJetPico event
+ production.
+ 
+ OUTDIR/tmplogs must be created before the script is submitted 
+ 
+ To Use: Settings
+ 
+ NFILES:     The number of files to use from the list returned
+ by the catalogue. default: "all" for all files
+ 
+ DAYNR:      a range of run days to access. For a single day,
+ can do something like "150-150"
+ 
+ PROD:       The production tag the data was produced under
+ example: P17id: production with SL17d ( star library )
+ 
+ TRGSETUP:   the trigger sets of the production
+ example: AuAu_200_production_mid_2014
+ Au+Au at 200 GeV mid luminosity collected in 2014
+ 
+ FILETYPE:   what type of data is being requested. Default: daq_reco_MuDst
+ 
+ ROOTDIR:    root directory of TSTarJetPicoMaker code
+ 
+ OUTDIR:     target output directory
+ 
+ TRIGGERS:   the set of triggers the Maker will reproduce: the mapping
+             between this index & trigger set is defined in the root macro
+ 
+ -->
+
+<job fileListSyntax="xrootd" inputOrder="runnumber" splitBy="runnumber" maxEvents="15000" simulateSubmission="false">
+
+ <command>
+    setenv LOG &OUTDIR;/&TRGSETUP;/logs/log/&DAYNR;
+    setenv ERR &OUTDIR;/&TRGSETUP;/logs/err/&DAYNR;
+    setenv OUT &OUTDIR;/&TRGSETUP;/out/&DAYNR;
+
+    mkdir StRoot
+    mv StRefMultCorr StRoot/
+
+    mkdir -p $LOG
+    mkdir -p $ERR
+    mkdir -p $OUT
+
+    starver pro
+    root4star -q -b MakeTStarJetPico.cxx\(1e9,\"$FILELIST\",\"$JOBID\",$INPUTFILECOUNT,\&TRIGGERS;\)
+
+    zip $LOG/$JOBID.out.zip &OUTDIR;/&TRGSETUP;/tmplogs/$JOBID.log
+    zip $ERR/$JOBID.err.zip &OUTDIR;/&TRGSETUP;/tmplogs/$JOBID.err
+    rm &OUTDIR;/&TRGSETUP;/tmplogs/$JOBID.*
+	
+    mv $SCRATCH/*.root $OUT/
+ </command>
+
+ <SandBox installer="ZIP">
+	 <Package name="AuAu14Pico_&TRGSETUP;_&DAYNR;">
+                <File>file:&ROOTDIR;/macros/MakeY14Pico.cxx</File>
+                <File>file:&ROOTDIR;/libs/libTStarJetPico.so</File>
+                <File>file:&ROOTDIR;/libs/JetPicoMaker.so</File>
+                <File>file:&ROOTDIR;/libs/StRefMultCorr.so</File>
+                <File>file:&ROOTDIR;/StRoot/StRefMultCorr/</File>
+         </Package>
+ </SandBox>
+ 
+ <Generator>
+   <Location>&ROOTDIR;/scheduler/report/</Location>
+   <ScriptLocation>&ROOTDIR;/scheduler/csh/</ScriptLocation>
+   <ListLocation>&ROOTDIR;/scheduler/list/</ListLocation>
+ </Generator>
+
+ <stdout URL="file:&OUTDIR;/tmplogs/$JOBID.log" />
+ <stderr URL="file:&OUTDIR;/tmplogs/$JOBID.err" />
+ <input singleCopy="true" URL="catalog:star.bnl.gov?sanity=1,trgsetupname=&TRGSETUP;,production=&PROD;,filetype=&FILETYPE;,daynumber[]&DAYNR;,storage!=hpss" nFiles="&NFILES;" />
+
+</job>

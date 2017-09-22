@@ -1,0 +1,63 @@
+# ignore lists for git
+
+# that weird crap emacs generates
+*~
+
+# other version control
+CVS
+CVS/*
+
+# object files
+*.o
+*.obj
+
+# log information
+*.err
+*.log
+*.out
+log
+
+# the apple DS_Store stuff
+.DS_Store*
+._*
+
+# other possible output
+*png
+*pdf
+
+# the stuff that should be created
+# after cloning
+out
+out/*
+test
+test/*
+tmp
+tmp/*
+bin
+bin/*
+src/obj
+src/obj/*
+
+# dylibraries
+*.so
+*.dylib
+
+# static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+*.exe
+*.out
+*.app
+
+# my own macros
+cleanupScratch.csh
+jetPicoProduction.xml
+MakeTStarJetPico.cxx
+MakeTStarJetPicoOldMaker.cxx
+
+# condor file
+CondorFile

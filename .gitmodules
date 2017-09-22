@@ -1,0 +1,7 @@
+[submodule "Run14AuAu200GeV_StRefMultCorr"]
+path = external/Run14AuAu200GeV_StRefMultCorr
+url = https://github.com/GuannanXie/Run14AuAu200GeV_StRefMultCorr.git
+
+[submodule "eventStructuredAu"]
+path = external/eventStructuredAu
+url = https://github.com/kkauder/eventStructuredAu.git

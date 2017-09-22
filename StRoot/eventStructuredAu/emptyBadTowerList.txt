@@ -1,0 +1,2 @@
+# Single non-existent tower to mock up no bad tower cut
+-1
