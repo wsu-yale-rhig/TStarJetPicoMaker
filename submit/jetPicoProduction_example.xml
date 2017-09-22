@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!DOCTYPE note [
 <!ENTITY NFILES "all">
+<!ENTITY MACRO "MakeTStarJetPico.cxx">
 <!ENTITY DAYNR "101-105">
 <!ENTITY PROD "P17id">
 <!ENTITY TRGSETUP "AuAu_200_production_mid_2014">
@@ -22,6 +23,9 @@
  
  NFILES:     The number of files to use from the list returned
  by the catalogue. default: "all" for all files
+ 
+ MACRO:      The root script to be executed: must be located in
+ macros subdirectory. Examples can be found there.
  
  DAYNR:      a range of run days to access. For a single day,
  can do something like "150-150"
@@ -59,7 +63,7 @@
     mkdir -p $OUT
 
     starver pro
-    root4star -q -b MakeTStarJetPico.cxx\(1e9,\"$FILELIST\",\"$JOBID\",$INPUTFILECOUNT,\&TRIGGERS;\)
+    root4star -q -b &MACRO;\(1e9,\"$FILELIST\",\"$JOBID\",$INPUTFILECOUNT,\&TRIGGERS;\)
 
     mv $SCRATCH/*.root $OUT/
     
@@ -71,7 +75,7 @@
 
  <SandBox installer="ZIP">
 	 <Package name="AuAu14Pico_&TRGSETUP;_&DAYNR;">
-                <File>file:&ROOTDIR;/macros/MakeY14Pico.cxx</File>
+                <File>file:&ROOTDIR;/macros/&MACRO;</File>
                 <File>file:&ROOTDIR;/libs/libTStarJetPico.so</File>
                 <File>file:&ROOTDIR;/libs/libTStarJetPicoMaker.so</File>
                 <File>file:&ROOTDIR;/libs/libStRefMultCorr.so</File>
