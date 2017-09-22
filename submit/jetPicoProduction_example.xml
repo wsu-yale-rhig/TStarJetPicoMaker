@@ -7,7 +7,7 @@
 <!ENTITY FILETYPE "daq_reco_MuDst">
 <!ENTITY ROOTDIR "">
 <!ENTITY OUTDIR "">
-<!ENTITY TRIGGERS "">
+<!ENTITY TRIGGERS "0">
 ]>
 
 <!--             STAR Collaboration - Nick Elsey             -->
@@ -47,9 +47,9 @@
 <job fileListSyntax="xrootd" inputOrder="runnumber" splitBy="runnumber" maxEvents="15000" simulateSubmission="false">
 
  <command>
-    setenv LOG &OUTDIR;/&TRGSETUP;/logs/log/&DAYNR;
-    setenv ERR &OUTDIR;/&TRGSETUP;/logs/err/&DAYNR;
-    setenv OUT &OUTDIR;/&TRGSETUP;/out/&DAYNR;
+    setenv LOG &OUTDIR;/&TRGSETUP;/logs/log/trigger_set_&TRIGGERS;/&DAYNR;
+    setenv ERR &OUTDIR;/&TRGSETUP;/logs/err/trigger_set_&TRIGGERS;&DAYNR;
+    setenv OUT &OUTDIR;/&TRGSETUP;/out/trigger_set_&TRIGGERS;/&DAYNR;
 
     mkdir StRoot
     mv StRefMultCorr StRoot/
@@ -61,19 +61,20 @@
     starver pro
     root4star -q -b MakeTStarJetPico.cxx\(1e9,\"$FILELIST\",\"$JOBID\",$INPUTFILECOUNT,\&TRIGGERS;\)
 
+    mv $SCRATCH/*.root $OUT/
+    
     zip $LOG/$JOBID.out.zip &OUTDIR;/&TRGSETUP;/tmplogs/$JOBID.log
     zip $ERR/$JOBID.err.zip &OUTDIR;/&TRGSETUP;/tmplogs/$JOBID.err
     rm &OUTDIR;/&TRGSETUP;/tmplogs/$JOBID.*
 	
-    mv $SCRATCH/*.root $OUT/
  </command>
 
  <SandBox installer="ZIP">
 	 <Package name="AuAu14Pico_&TRGSETUP;_&DAYNR;">
                 <File>file:&ROOTDIR;/macros/MakeY14Pico.cxx</File>
                 <File>file:&ROOTDIR;/libs/libTStarJetPico.so</File>
-                <File>file:&ROOTDIR;/libs/JetPicoMaker.so</File>
-                <File>file:&ROOTDIR;/libs/StRefMultCorr.so</File>
+                <File>file:&ROOTDIR;/libs/libTStarJetPicoMaker.so</File>
+                <File>file:&ROOTDIR;/libs/libStRefMultCorr.so</File>
                 <File>file:&ROOTDIR;/StRoot/StRefMultCorr/</File>
          </Package>
  </SandBox>
