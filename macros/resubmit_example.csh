@@ -11,7 +11,7 @@
 # 4: session ID ( example: 409098CFA54082034B0605C36512C954 )
 # 5: number of jobs to check ( from 1 -> n )
 
-if ( $# != "4" ) then
+if ( $# != "5" ) then
         echo 'Error: illegal number of parameters'
         exit
 endif
