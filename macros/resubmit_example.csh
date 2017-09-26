@@ -23,7 +23,7 @@ set session = $4
 set events = $5
 set xml = ${session}.session.xml
 
-set outFile = ${YOUROUTPUTSPACE}/y14_production/${trigset}/out/${day}/
+set outFile = ${YOUROUTPUTSPACE}/y14_production/${trigset}/out/trigger_set_${trigid}/${day}/
 
 if !( -e ${outFile} ) then
     echo 'Are luminosity and day range specified correctly?'
