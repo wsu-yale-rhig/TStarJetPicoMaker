@@ -67,8 +67,8 @@
 
     mv $SCRATCH/*.root $OUT/
     
-    zip $LOG/$JOBID.out.zip &OUTDIR;/&TRGSETUP;/tmplogs/$JOBID.log
-    zip $ERR/$JOBID.err.zip &OUTDIR;/&TRGSETUP;/tmplogs/$JOBID.err
+    zip $LOG/$JOBID.out.zip &OUTDIR;/tmplogs/$JOBID.log
+    zip $ERR/$JOBID.err.zip &OUTDIR;/tmplogs/$JOBID.err
     rm &OUTDIR;/&TRGSETUP;/tmplogs/$JOBID.*
 	
  </command>
