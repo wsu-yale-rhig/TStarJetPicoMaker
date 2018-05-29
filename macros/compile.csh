@@ -9,9 +9,8 @@
 
 
 echo "[i] Remove any existing libs"
-rm -v libTStarJetPicoMaker.so
-rm -v libs/libTStarJetPicoMaker.so
-rm -v sandbox/libTStarJetPicoMaker.so
+rm -v libs/lib*.so
+rm -v sandbox/lib*.so
 
 setenv JETPICODIR "${PWD}/StRoot/eventStructuredAu"
 
