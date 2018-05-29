@@ -38,8 +38,8 @@ void LoadLibs()
     "StEEmcDbMaker",
     "StEEmcUtil",
     "StTriggerUtilities",
-    "StPicoDstMaker.so",
-    "StPicoEvent.so",
+    "StPicoDstMaker",
+    "StPicoEvent",
     
     //our libs
     "libs/libTStarJetPico.so",
