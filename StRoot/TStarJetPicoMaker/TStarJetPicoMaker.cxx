@@ -432,7 +432,7 @@ Bool_t TStarJetPicoMaker::MuProcessPrimaryTracks() {
     jetTrack.SetNsigmaElectron(muTrack->nSigmaElectron());
     jetTrack.SetCharge(muTrack->charge());
     jetTrack.SetNOfFittedHits(muTrack->nHitsFit());
-    jetTrack.SetNOfPossHits(muTrack->nHitsPoss());
+    jetTrack.SetNOfPossHits(muTrack->nHitsPoss(kTpcId) + 1); // add one for primary vertex
     jetTrack.SetKey(muTrack->id());
     jetTrack.SetChi2(muTrack->chi2xy());
     jetTrack.SetChi2PV(muTrack->chi2z());
