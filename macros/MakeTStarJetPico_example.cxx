@@ -48,8 +48,8 @@ void MakeTStarJetPico_example(int nEvents = 1e3,
   gSystem->Load( "StEEmcDbMaker" );
   gSystem->Load( "StPreEclMaker" );
   gSystem->Load( "StEpcMaker" );
-  gSystem->Load("StPicoDstMaker.so");
   gSystem->Load("StPicoEvent.so");
+  gSystem->Load("StPicoDstMaker.so");
   // load local StRefMultCorr
   gSystem->Load( "libStRefMultCorr.so" );
   // load local TStarJetPico library & its maker
