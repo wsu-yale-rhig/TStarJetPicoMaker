@@ -792,7 +792,10 @@ Bool_t TStarJetPicoMaker::MuFillHeader() {
   mEvent->GetHeader()->SetBbcCoincidenceRate(mMuInputEvent->runInfo().bbcCoincidenceRate());
   mEvent->GetHeader()->SetBbcBlueBackgroundRate(mMuInputEvent->runInfo().bbcBlueBackgroundRate());
   mEvent->GetHeader()->SetBbcYellowBackgroundRate(mMuInputEvent->runInfo().bbcYellowBackgroundRate());
-  mEvent->GetHeader()->SetBbcAdcSumEast(mMuInputEvent->bbcTriggerDetector().adcSumEast());
+  mEvent->GetHeader()->SetBbcAdcSumEastInner(mMuInputEvent->bbcTriggerDetector().adcSumEast());
+  mEvent->GetHeader()->SetBbcAdcSumWestInner(mMuInputEvent->bbcTriggerDetector().adcSumWest());
+  mEvent->GetHeader()->SetBbcAdcSumEastOuter(mMuInputEvent->bbcTriggerDetector().adcSumEastLarge());
+  mEvent->GetHeader()->SetBbcAdcSumWestOuter(mMuInputEvent->bbcTriggerDetector().adcSumWestLarge());
   mEvent->GetHeader()->SetBbcOfflineVertex(mMuInputEvent->bbcTriggerDetector().zVertex());
   mEvent->GetHeader()->SetBbcOnlineVertex(mMuInputEvent->bbcTriggerDetector().onlineTimeDifference());
   mEvent->GetHeader()->SetRefMultFTPCE(mMuInputEvent->refMultFtpcEast());
