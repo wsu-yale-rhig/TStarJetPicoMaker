@@ -82,7 +82,12 @@ class TStarJetPicoEventHeader : public TObject
   Float_t GetBbcCoincidenceRate()           const {return fBbcCoincidenceRate;}
   Float_t GetBbcBlueBackgroundRate()        const {return fBbcBlueBackgroundRate;}
   Float_t GetBbcYellowBackgroundRate()      const {return fBbcYellowBackgroundRate;}
-  Int_t   GetBbcAdcSumEast()                const {return fBbcAdcSumEast;}
+  Int_t   GetBbcAdcSumEast()                const {return GetBbcAdcSumEastInner();}
+  Int_t   GetBbcAdcSumEastInner()           const {return fBbcAdcSumEast;}
+  Int_t   GetBbcAdcSumEastOuter()           const {return fBbcAdcSumEastOuter;}
+  Int_t   GetBbcAdcSumWest()                const {return GetBbcAdcSumWestInner();}
+  Int_t   GetBbcAdcSumWestInner()           const {return fBbcAdcSumWest;}
+  Int_t   GetBbcAdcSumWestOuter()           const {return fBbcAdcSumWestOuter;}
   
   Int_t   GetnumberOfVpdEastHits()          const {return fnumberOfVpdEastHits;}
   Int_t   GetnumberOfVpdWestHits()          const {return fnumberOfVpdWestHits;}
@@ -152,7 +157,12 @@ class TStarJetPicoEventHeader : public TObject
   void SetBbcCoincidenceRate(Float_t val)        {fBbcCoincidenceRate = val;}
   void SetBbcBlueBackgroundRate(Float_t val)     {fBbcBlueBackgroundRate = val;}
   void SetBbcYellowBackgroundRate(Float_t val)   {fBbcYellowBackgroundRate = val;}
-  void SetBbcAdcSumEast(Int_t val)               {fBbcAdcSumEast = val;}
+  void SetBbcAdcSumEast(Int_t val)               {SetBbcAdcSumEastInner(val);}
+  void SetBbcAdcSumEastInner(Int_t val)          {fBbcAdcSumEast = val;}
+  void SetBbcAdcSumEastOuter(Int_t val)          {fBbcAdcSumEastOuter = val;}
+  void SetBbcAdcSumWest(Int_t val)               {SetBbcAdcSumWestInner(val);}
+  void SetBbcAdcSumWestInner(Int_t val)          {fBbcAdcSumWest = val;}
+  void SetBbcAdcSumWestOuter(Int_t val)          {fBbcAdcSumWestOuter = val;}
   void SetnumberOfVpdEastHits(Int_t val)         {fnumberOfVpdEastHits = val;}
   void SetnumberOfVpdWestHits(Int_t val)         {fnumberOfVpdWestHits = val;}
  // pp vertex cut info
@@ -216,6 +226,9 @@ class TStarJetPicoEventHeader : public TObject
   Float_t  fBbcBlueBackgroundRate;
   Float_t  fBbcYellowBackgroundRate;
   Int_t    fBbcAdcSumEast;
+  Int_t    fBbcAdcSumEastOuter;
+  Int_t    fBbcAdcSumWest;
+  Int_t    fBbcAdcSumWestOuter;
 
  // pp vertex cut info
   Int_t   fBbcOnlineVertex;

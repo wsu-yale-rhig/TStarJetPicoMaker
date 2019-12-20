@@ -57,6 +57,9 @@ TStarJetPicoEventHeader::TStarJetPicoEventHeader()
   , fBbcBlueBackgroundRate(0)
   , fBbcYellowBackgroundRate(0)
   , fBbcAdcSumEast(0)
+  , fBbcAdcSumEastOuter(0)
+  , fBbcAdcSumWest(0)
+  , fBbcAdcSumWestOuter(0)
   , fBbcOnlineVertex(0)
   , fBbcOfflineVertex(0)
   , fRefMultFTPCE(0)
@@ -113,6 +116,9 @@ TStarJetPicoEventHeader::TStarJetPicoEventHeader(const TStarJetPicoEventHeader &
   , fBbcBlueBackgroundRate(t.fBbcBlueBackgroundRate)
   , fBbcYellowBackgroundRate(t.fBbcYellowBackgroundRate)
   , fBbcAdcSumEast(t.fBbcAdcSumEast)
+  , fBbcAdcSumEastOuter(t.fBbcAdcSumEastOuter)
+  , fBbcAdcSumWest(t.fBbcAdcSumWest)
+  , fBbcAdcSumWestOuter(t.fBbcAdcSumWestOuter)
   , fBbcOnlineVertex(t.fBbcOnlineVertex)
   , fBbcOfflineVertex(t.fBbcOfflineVertex)
   , fRefMultFTPCE(t.fRefMultFTPCE)
@@ -180,6 +186,9 @@ void TStarJetPicoEventHeader::Clear(Option_t */*Option*/)
   fBbcBlueBackgroundRate = 0;
   fBbcYellowBackgroundRate = 0;
   fBbcAdcSumEast = 0;
+  fBbcAdcSumEastOuter = 0;
+  fBbcAdcSumWest = 0;
+  fBbcAdcSumWestOuter = 0;
   fBbcOnlineVertex = 0;
   fBbcOfflineVertex = 0;
   fRefMultFTPCE = 0;
