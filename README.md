@@ -22,7 +22,7 @@ in external/. You can initialize the submodules via
 
 ## Usage
 
-After cloning the repository, you can use 
+After cloning the repository, you can use  
 
 ```
 ./macros/configure.sh
