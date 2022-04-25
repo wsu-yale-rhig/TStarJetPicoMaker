@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE note [
+<!ENTITY NFILES "all">
+<!ENTITY NEVENTS "1e9">
+<!-- <!ENTITY NFILES  "2"> -->
+<!-- <!ENTITY NEVENTS "100000"> -->
+<!ENTITY MACRO "MakeTStarJetPico.cxx">
+<!-- <!ENTITY DAYNR "101-105"> -->
+<!ENTITY TRGSETUP "production_pAu200_2015">
+<!ENTITY PROD "P16id">
+<!ENTITY FILETYPE "daq_reco_MuDst">
+<!ENTITY ROOTDIR "/gpfs/mnt/gpfs01/star/pwg/WSU/git_TStarJetPicoMaker">
+<!ENTITY OUTDIR  "/gpfs/mnt/gpfs01/star/pwg/WSU/git_TStarJetPicoMaker">
+<!ENTITY TRIGGERS "2">
+<!ENTITY FILENAME_TAG "st_physics">
+]>
+
+<!--             STAR Collaboration - David Stewart -->
+<!--
+Script to query STAR catalogue and split the resulting
+file list into regularly sized jobs for TStarJetPico event
+production.
+
+OUTDIR/tmplogs must be created before the script is submitted 
+
+To Use: Settings
+
+NFILES:     The number of files to use from the list returned
+by the catalogue. default: "all" for all files
+
+MACRO:      The root script to be executed: must be located in
+macros subdirectory. Examples can be found there.
+
+PROD:       The production tag the data was produced under
+example: P17id: production with SL17d ( star library )
+
+TRGSETUP:   the trigger sets of the production
+example: AuAu_200_production_mid_2014
+Au+Au at 200 GeV mid luminosity collected in 2014
+
+FILETYPE:   what type of data is being requested. Default: daq_reco_MuDst
+
+ROOTDIR:    root directory of TSTarJetPicoMaker code
+
+OUTDIR:     target output directory
+
+TRIGGERS:   the set of triggers the Maker will reproduce: the mapping
+between this index & trigger set is defined in the root macro
+
+-->
+<job fileListSyntax="xrootd" maxFilesPerProcess="100" inputOrder="runnumber"  simulateSubmission="false">
+    <command>
+        <!-- setenv LOG log -->
+        <!-- setenv ERR err -->
+        <!-- setenv OUT out -->
+
+        mkdir StRoot
+        mv StRefMultCorr StRoot/
+
+        <!-- mkdir -p $LOG -->
+        <!-- mkdir -p $ERR -->
+        <!-- mkdir -p $OUT -->
+
+        echo input file list:
+        cat $FILELIST
+
+        starver pro
+        root4star -q -b &MACRO;\(&NEVENTS;,\"$FILELIST\",\"$JOBID\",$INPUTFILECOUNT,&TRIGGERS;\)
+
+        echo done running &MACRO;
+        <!-- zip log/$JOBID.out.zip $LOG/$JOBID.log -->
+        <!-- zip err/$JOBID.err.zip $ERR/$JOBID.err -->
+        <!-- rm  out/$JOBID.* -->
+    </command>
+
+    <SandBox installer="ZIP">
+        <Package name="&TRGSETUP;">
+            <File>file:&ROOTDIR;/macros/&MACRO;</File>
+            <File>file:&ROOTDIR;/libs/libTStarJetPico.so</File>
+            <File>file:&ROOTDIR;/libs/libTStarJetPicoMaker.so</File>
+            <File>file:&ROOTDIR;/libs/libStRefMultCorr.so</File>
+            <File>file:&ROOTDIR;/StRoot/StRefMultCorr/</File>
+        </Package>
+    </SandBox>
+    <!-- <output fromScratch="log/*.zip"  toURL="file:&OUTDIR;/tmplogs/"/> -->
+    <!-- <output fromScratch="err/*.zip"  toURL="file:&OUTDIR;/tmplogs/"/> -->
+    <output fromScratch="*.root"     toURL="file:&OUTDIR;/output/"/>
+
+    <Generator>
+        <Location>&ROOTDIR;/scheduler/report/</Location>
+        <ScriptLocation>&ROOTDIR;/scheduler/csh/</ScriptLocation>
+        <ListLocation>&ROOTDIR;/scheduler/list/</ListLocation>
+    </Generator>
+
+    <stdout URL="file:&OUTDIR;/tmplogs/$JOBID.log" />
+    <stderr URL="file:&OUTDIR;/tmplogs/$JOBID.err" />
+    <input  URL="catalog:star.bnl.gov?sanity=1,trgsetupname=&TRGSETUP;,production=&PROD;,filetype=&FILETYPE;,storage!=nfs,filename~st_physics" nFiles="&NFILES;" />
+</job>
