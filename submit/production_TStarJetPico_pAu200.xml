@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!DOCTYPE note [
-<!ENTITY NFILES "all">
+<!-- <!ENTITY NFILES "all"> -->
 <!ENTITY NEVENTS "1e9">
-<!-- <!ENTITY NFILES  "2"> -->
+<!ENTITY NFILES  "500">
 <!-- <!ENTITY NEVENTS "100000"> -->
 <!ENTITY MACRO "MakeTStarJetPico.cxx">
 <!-- <!ENTITY DAYNR "101-105"> -->
