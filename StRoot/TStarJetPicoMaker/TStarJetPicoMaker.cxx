@@ -1,3 +1,5 @@
+//adapted Feb 2020 by Isaac Mooney not to need input from the Geant files. All info obtained from the MuDsts or Minimcs
+
 #include "TStarJetPicoMaker.hh"
 
 #include "TStarJetPicoEvent.h"
@@ -6,6 +8,7 @@
 #include "TStarJetPicoTower.h"
 #include "TStarJetPicoV0.h"
 #include "TStarJetPicoTriggerInfo.h"
+#include "TDatabasePDG.h"
 
 #include "StRefMultCorr/StRefMultCorr.h"
 #include "StRefMultCorr/CentralityMaker.h"
@@ -39,20 +42,37 @@
 #include "StEmcClusterCollection.h"
 #include "StDaqLib/EMC/StEmcDecoder.h"
 
+#include <math.h>
 
 ClassImp(TStarJetPicoMaker)
 
-TStarJetPicoMaker::TStarJetPicoMaker(std::string outFileName, inputMode input, std::string name)
-  : StMaker(name.c_str()), mEventSelector(new TStarJetEventCuts), mV0Selector(new TStarJetV0Cuts),
-    mOutFileName(outFileName), mOutFile(nullptr), mTree(nullptr), mMCTree(nullptr),
-    mEvent(nullptr), mMCEvent(nullptr), mMuDst(nullptr), mMuInputEvent(nullptr),
-    mPicoDst(nullptr), mPicoInputEvent(nullptr), mTriggerSimu(nullptr), mStMCEvent(nullptr),
+TStarJetPicoMaker::TStarJetPicoMaker(std::string outFileName, TChain* mcTree,
+        inputMode input, std::string name, int nFiles, int trigSet)
+: StMaker(name.c_str()), mEventSelector(new TStarJetEventCuts), mV0Selector(new TStarJetV0Cuts),
+  mOutFileName(outFileName), mOutFile(nullptr), mTree(nullptr), mMCTree(nullptr),
+  mEvent(nullptr), mMCEvent(nullptr), mMuDstMaker(nullptr), mMuDst(nullptr), mMuInputEvent(nullptr),
+  mPicoDst(nullptr), mPicoInputEvent(nullptr), mTriggerSimu(nullptr), mStMiniMcEvent(nullptr),
     mEMCPosition(nullptr), mBEMCGeom(nullptr), mEMCFilter(nullptr), mBemcTables(nullptr),
     mBemcMatchedTracks(), mRefMultCorr(nullptr), mGRefMultCorr(nullptr), mCallsToMake(0),
     mNEvents(0), mNAcceptedEvents(0), mMakeV0(kFALSE), mMakeMC(kFALSE), mInputMode(input),
     mVertexMode(VpdOrRank), mTowerStatusMode(AcceptAllTowers), mRefMultCorrMode(FillNone),
     mdVzMax(3.0), mTrackFlagMin(0), mTrackDCAMax(3.0), mTrackEtaMin(-1.5), mTrackEtaMax(1.5),
-    mTrackFitPointMin(10), mTowerEnergyMin(0.15) { }
+    mTrackFitPointMin(10), mTowerEnergyMin(0.15) {
+  
+        if (!LoadTree(mcTree)) {
+          LOG_INFO << "load chain failed" << endm;
+          LOG_INFO << " No MC Tree, assumed not to use only Dst trees, not MC tress" << endm;
+          mRunMode = mode_Dst;
+        } else {
+          mRunMode = mode_MC;
+        }
+        mMakeMC = (mRunMode == mode_MC);
+        
+        current_ = 0;
+
+	    //for later use looking up PDG masses using particle PID
+	    if (mMakeMC) pdg = new TDatabasePDG();
+    }
 
 TStarJetPicoMaker::~TStarJetPicoMaker() {
   delete mEventSelector;
@@ -71,8 +91,6 @@ Int_t TStarJetPicoMaker::Init() {
 }
 
 void  TStarJetPicoMaker::Clear(Option_t* option) {
-  delete mMCEvent; mMCEvent = nullptr;
-  delete mEvent; mEvent = nullptr;
   mBemcMatchedTracks.clear();
   StMaker::Clear(option);
 }
@@ -95,8 +113,39 @@ Int_t TStarJetPicoMaker::Finish() {
   return kStOk;
 }
 
+bool TStarJetPicoMaker::LoadTree(TChain* chain) {
+  if (chain == nullptr) {
+    LOG_INFO << "chain does not exist" << endm;
+    return false;
+  }
+  if (mMakeMC) {
+      if (chain->GetBranch("StMiniMcEvent") == nullptr) {
+        LOG_ERROR << "chain does not contain StMiniMcEvent branch" << endm;
+        return false;
+      }
+      chain_ = chain;
+      mStMiniMcEvent = new StMiniMcEvent;
+      
+      chain_->SetBranchAddress("StMiniMcEvent", &mStMiniMcEvent);
+      chain_->GetEntry(0);
+  }
+  return true;
+}
+
 Int_t TStarJetPicoMaker::Make() {
   mCallsToMake++;
+    
+  if (mMakeMC) {
+      if (mStMiniMcEvent == nullptr) {
+          LOG_ERROR << "StMiniMcEvent Branch not loaded properly: exiting run loop" << endm;
+          return kStFatal;
+      }
+      // load the matching miniMC event
+      if (LoadEvent() == false) {
+          LOG_ERROR << "Could not find miniMC event matching muDST event" << endm;
+          return kStErr;
+      }
+  }
   
   if (mInputMode == InputMuDst)
       return MakeMuDst();
@@ -198,7 +247,6 @@ void TStarJetPicoMaker::InitMakers() {
 }
 
 void TStarJetPicoMaker::InitOutput() {
-  
   mOutFile = new TFile(mOutFileName.c_str(), "RECREATE");
   LOG_DEBUG << "TStarJetPicomaker : output file created: " << mOutFileName << endm;
   
@@ -213,16 +261,19 @@ void TStarJetPicoMaker::InitOutput() {
   }
 }
 
-Int_t TStarJetPicoMaker::MakeMuDst() {
 
+Int_t TStarJetPicoMaker::MakeMuDst() {
   /* load input StMuDst & StMuDstEvent, check for
      MC data if requested by user
    */
   if (LoadMuDst() != kStOk) return kStOk;
-  
+
   /* got the event - count it */
   mNEvents++;
-
+  //LOG_INFO << "MAKER EVENT NUMBER " << mNEvents << endm;
+  //LOG_INFO << "MUDST EVENT ID = " << (unsigned) mMuDst->event()->eventId() << " AND RUN ID = " << (unsigned) mMuDst->event()->runId() << endm;
+  
+    /*LOG_DEBUG*/
   /* selects the primary vertex either by rank,
      or by Vpd - VPD with rank as a backup
      when no VPD match can be found is used as default
@@ -238,7 +289,18 @@ Int_t TStarJetPicoMaker::MakeMuDst() {
     default :
       break;
   }
-
+  
+  
+  //the commented-out code below just prints out the triggers before the HT2 is added by hand by checking tower ADCs.
+  /*
+  if (mMuInputEvent) {
+  std::vector<unsigned> triggerIds = mMuInputEvent->triggerIdCollection().nominal().triggerIds();
+  for(unsigned i = 0; i < triggerIds.size(); i++) {
+    //mEvent->GetHeader()->AddTriggerId(triggerIds[i]);
+    LOG_INFO << "TRIGGER: " << triggerIds[i] << endm;
+  }
+  }
+*/
   /* checks the event against all active
      event level selectors, possibly including
      vertex position & trigger
@@ -246,10 +308,11 @@ Int_t TStarJetPicoMaker::MakeMuDst() {
    */
   if (!mEventSelector->AcceptEvent(mMuInputEvent)) return kStOk;
   
+  //LOG_INFO << "wisdom: EVENT " << mNEvents << " IS OKAY" << endm;
+    /*LOG_DEBUG*/
   /* create new event structures */
   mEvent = new TStarJetPicoEvent();
-  if (mMakeMC) mMCEvent = new TStarJetPicoEvent();
-
+  
   /* process primary tracks for the selected vertex */
   MuProcessPrimaryTracks();
   
@@ -270,10 +333,22 @@ Int_t TStarJetPicoMaker::MakeMuDst() {
   
   /* event is complete - fill the trees */
   mTree->Fill();
-  if (mMakeMC) mMCTree->Fill();
   
+  delete mEvent; mEvent = nullptr;
+ 
+  if (mMakeMC) mMCEvent = new TStarJetPicoEvent();
+ 
+  /*process MC event*/
+  if (mMakeMC) MuProcessMCEvent(); 
+ 
+  /* event is complete - fill the trees */
+  if (mMakeMC) mMCTree->Fill();
+ 
+  delete mMCEvent; mMCEvent = nullptr;
+ 
   /* count the successful write & exit */
   mNAcceptedEvents++;
+
   return kStOk;
 }
 
@@ -312,9 +387,9 @@ Int_t TStarJetPicoMaker::LoadMuDst() {
   }
   /* check for MC data if requested by user */
   if (mMakeMC) {
-    mStMCEvent =  (StMcEvent*) GetDataSet("StMcEvent");
-    if (!mStMCEvent) {
-      LOG_ERROR << "TStarJetPicoMaker: No StMcEvent loaded for this event" << endm;
+    //mStMiniMcEvent = (StMiniMcEvent*) GetDataSet("StMiniMcEvent"); //getdataset is for geant not minimcs
+    if (!mStMiniMcEvent) {
+      LOG_ERROR << "TStarJetPicoMaker: No StMiniMcEvent loaded for this event" << endm;
       return kStErr;
     }
   }
@@ -346,7 +421,7 @@ Int_t TStarJetPicoMaker::SelectVertex() {
   }
 
   /* check for MC vertex if processing MC data */
-  if (mMakeMC && !mStMCEvent->primaryVertex()) {
+    if (mMakeMC && mStMiniMcEvent->nUncorrectedPrimaries() == 0) {//since primaries mean there is a vertex //!mStMiniMcEvent->primaryVertex()) {
     LOG_DEBUG << "TStarJetPicoMaker: No StMcVertex for this event" << endm;
     return kStErr;
   }
@@ -411,19 +486,35 @@ Bool_t TStarJetPicoMaker::MuProcessPrimaryTracks() {
   TStarJetPicoPrimaryTrack jetTrack;
   UInt_t matchedTracks = 0;
   mBemcMatchedTracks.resize(nTracks);
+
   for (UInt_t i = 0; i < nTracks; ++i) {
     muTrack = (StMuTrack*) mMuDst->primaryTracks(i);
+    
+    //TEMP FOR DEBUG (although it shouldn't hurt if you forget to remove this after
+    if (muTrack->charge() == -9999 || muTrack->eta() > 10 || muTrack->eta() < -10) {
+      continue;
+    }
+
     /* check if track will be saved to event structure */
     if(muTrack->flag() < mTrackFlagMin || muTrack->nHitsFit() <= mTrackFitPointMin ||
         muTrack->dcaGlobal().mag() > mTrackDCAMax || muTrack->eta() > mTrackEtaMax ||
         muTrack->eta() < mTrackEtaMin) continue;
-    
     jetTrack.Clear();
     
     /* fill track information */
     jetTrack.SetPx(muTrack->momentum().x());
     jetTrack.SetPy(muTrack->momentum().y());
+    if (/*muTrack->momentum().z() != muTrack->momentum().z()*/ isnan(muTrack->momentum().z())) {
+      //LOG_INFO << "UNDEFINED MU PZ (primary track " << (unsigned) i << ") in event " << (unsigned) mMuDst->event()->eventId() << " of run " << (unsigned) mMuDst->event()->runId() << endm;
+    }
     jetTrack.SetPz(muTrack->momentum().z());
+    if (isnan(jetTrack.GetPz())) {
+      //LOG_INFO << "UNDEFINED PICO PZ (primary track " << (unsigned) i << ") in event " << (unsigned) mMuDst->event()->eventId() << " of run " << (unsigned) mMuDst->event()->runId() << endm;
+    }
+    if (/*mMuDst->event()*/mMuInputEvent->eventId() == 2820 && /*mMuDst->event()*/mMuInputEvent->runId() == 16143009) {
+      //LOG_INFO << "WRONG SIDE OF THE TRACKS! primary track " << (unsigned) i << " has mupz " << (unsigned) muTrack->momentum().z() << " and picopz " << (unsigned) jetTrack.GetPz() << endm;
+    }
+    
     jetTrack.SetDCA(muTrack->dcaGlobal().mag());
     jetTrack.SetdEdx(muTrack->dEdx());
     jetTrack.SetNsigmaPion(muTrack->nSigmaPion());
@@ -454,7 +545,6 @@ Bool_t TStarJetPicoMaker::MuProcessPrimaryTracks() {
     
     /* write track to event structure */
     mEvent->AddPrimaryTrack(&jetTrack);
-    
     /* project track to BEMC - used for
        tower/track matching
      */
@@ -470,7 +560,7 @@ Bool_t TStarJetPicoMaker::MuProcessPrimaryTracks() {
     mBemcMatchedTracks[matchedTracks] = BemcMatch(i,  mEvent->GetHeader()->GetNOfPrimaryTracks()-1, muTrack->eta(), muTrack->phi(), position.pseudoRapidity(), position.phi());
     matchedTracks++;
   }
-  
+
   /* shrink-to-fit: remove any unused space */
   mBemcMatchedTracks.resize(matchedTracks);
   
@@ -553,7 +643,7 @@ Bool_t TStarJetPicoMaker::MuProcessBEMC() {
       
       Float_t towerEnergy = tow->energy();
       Float_t towerADC = tow->adc();
-      
+
       if (towerEnergy < mTowerEnergyMin) continue;
       
       Float_t towerEta, towerPhi;
@@ -661,24 +751,38 @@ void TStarJetPicoMaker::MuProcessTriggerObjects() {
   Int_t bht1 = mTriggerSimu->bemc->barrelHighTowerTh(1);
   Int_t bht2 = mTriggerSimu->bemc->barrelHighTowerTh(2);
   Int_t bht3 = mTriggerSimu->bemc->barrelHighTowerTh(3);
-  LOG_DEBUG << "High Tower trigger thresholds: bht0 " << bht0 << " bht1: " << bht1 << " bht2: " << bht2 << " bht3: " << bht3 << endm;
-  
+  //LOG_INFO << "wisdom: High Tower trigger thresholds: bht0 " << bht0 << " bht1: " << bht1 << " bht2: " << bht2 << " bht3: " << bht3 << endm;
+  /*LOG_DEBUG*/
+
   TStarJetPicoTriggerInfo trigobj;
+  bool count_tows = 0;
+  //DEBUG:
+  vector<unsigned> adc20(20,0);
   for (unsigned towerId = 1; towerId <= 4800; ++towerId) {
     int status;
     mTriggerSimu->bemc->getTables()->getStatus(BTOW, towerId, status);
     const Int_t adc = mTriggerSimu->bemc->barrelHighTowerAdc(towerId);
+    if (adc > 18) {adc20[19] ++;}
+    else if (adc >= 0 && adc <= 18){ adc20[adc] ++;}
+    //LOG_INFO << "wisdom: ADC: " << (unsigned) adc << endm;
+    //HERE WE MANUALLY ADD THE HT2 TRIGGER IF AT LEAST ONE TOWER IS ABOVE THE BHT2 THRESHOLD. NOT IDEAL BUT OH WELL
+    if (bht2 > 0 && adc > bht2 && count_tows == 0) {
+      //LOG_INFO << "wisdom: ADDING TRIGGERS FOR EVENT " << (unsigned) /*mEvent->GetHeader()->GetEventId()*/mMuInputEvent->eventId() << " of run " << (unsigned) /*mEvent->GetHeader()->GetRunId()*/mMuInputEvent->runId() << " thanks to a tower with ADC " << (unsigned) adc << endm;
+      mEvent->GetHeader()->AddTriggerId(500205);
+      mEvent->GetHeader()->AddTriggerId(500215);
+      count_tows ++;
+    }//passed the threshold; added the trigger by hand
     Int_t trigMap = 0;
     Float_t eta, phi;
     mBEMCGeom->getEtaPhi(towerId, eta, phi);
     
     if (bht1 > 0 && adc > bht1) trigMap |= 1 << 1;
-    if (bht2 > 0 && adc > bht2) trigMap |= 1 << 2;
+    if (bht2 > 0 && adc > bht2) trigMap |= 1 << 2; 
     if (bht3 > 0 && adc > bht3) trigMap |= 1 << 3;
     
     if (trigMap & 0xf) {
-      LOG_DEBUG << "high tower trigger found. ADC: " << adc << endm;
-      
+      //LOG_INFO << "wisdom: high tower trigger found. ADC: " << adc << endm;
+      /*LOG_DEBUG*/
       trigobj.Clear();
       trigobj.SetEta(eta);
       trigobj.SetPhi(phi);
@@ -690,20 +794,83 @@ void TStarJetPicoMaker::MuProcessTriggerObjects() {
     }
   }
   
+  //LOG_INFO << "wisdom: AFTER TOWER LOOP: " << endm;
+  //LOG_INFO << "n tows / adc [0 - 19+]" << endm;
+  //for(int i = 0; i < adc20.size(); ++i) {
+    //LOG_INFO << (unsigned) adc20[i] << " ";
+  //}
+  //LOG_INFO << endm;
+
+  //JP locations:
+  //Jet Patch# Eta Phi Quadrant
+  //0 0.5 150 10'
+  //1 0.5 90 12'
+  //2 0.5 30 2'
+  //3 0.5 -30 4'
+  //4 0.5 -90 6'
+  //5 0.5 -150 8'
+  //6 -0.5 150 10'
+  //7 -0.5 90 12'
+  //8 -0.5 30 2'
+  //9 -0.5 -30 4'
+  //10 -0.5 -90 6'
+  //11 -0.5 -150 8'
+  //12 -0.1 150 10'
+  //13 -0.1 90 12'
+  //14 -0.1 30 2'
+  //15 -0.1 -30 4'
+  //16 -0.1 -90 6'
+  //17 -0.1 -150 8'
+
   /* get trigger thresholds for JP */
   Int_t jp0  = mTriggerSimu->bemc->barrelJetPatchTh(0);
   Int_t jp1  = mTriggerSimu->bemc->barrelJetPatchTh(1);
-  Int_t jp2  = mTriggerSimu->bemc->barrelJetPatchTh(2);
-  LOG_DEBUG << "Jet Patch trigger thresholds: jp0 " << jp0 << " jp1: " << jp1 << " jp2: " << jp2 << endm;
+  //
+  Int_t jp2e = mTriggerSimu->bemc->barrelJetPatchTh(2);
+  Int_t jp2m = mTriggerSimu->bemc->barrelJetPatchTh(3);
+  Int_t jp2w = mTriggerSimu->bemc->barrelJetPatchTh(4);
+  //Int_t jp2  = mTriggerSimu->bemc->barrelJetPatchTh(2);
+  //Int_t jp2 = 9999; //TEMP!
+  LOG_INFO << "Jet Patch trigger thresholds: jp0 " << jp0 << " jp1: " << jp1 << " jp2e,m,w: " << jp2e << " " << jp2m << " " << jp2w << endm;
   
   /* lookup 12 jet patches & 6 overlap thresholds - no EEMC data saved */
-  for (unsigned jp = 0; jp < 18; ++jp) {
-    const Int_t jpAdc = mTriggerSimu->bemc->barrelJetPatchAdc(jp);
+  if (mMakeMC) {
+      bool count_patches = 0;
+      for (unsigned jp = 0; jp < 18; ++jp) {
+          const Int_t jpAdc = mTriggerSimu->bemc->barrelJetPatchAdc(jp);
+          //hard-coding this for now, will improve later -- ONLY WORKS FOR pA2015 RIGHT NOW!!
+          if (jp >= 0 && jp <=5) {
+              if (jp2w > 0 && jpAdc > jp2w && count_patches == 0) {
+                  //add triggers
+                  mEvent->GetHeader()->AddTriggerId(500401);
+                  mEvent->GetHeader()->AddTriggerId(500411);
+                  count_patches ++;
+              }
+          }
+          if (jp >=6 && jp <=11) {
+              if (jp2e > 0 && jpAdc > jp2e && count_patches == 0) {
+                  //add triggers
+                  mEvent->GetHeader()->AddTriggerId(500401);
+                  mEvent->GetHeader()->AddTriggerId(500411);
+                  count_patches ++;
+              }
+          }
+          if (jp >=12 && jp <= 17) {
+              if (jp2m > 0 && jpAdc > jp2m && count_patches == 0) {
+                  //add triggers
+                  mEvent->GetHeader()->AddTriggerId(500401);
+                  mEvent->GetHeader()->AddTriggerId(500411);
+                  count_patches ++;
+              }
+          }
+
     Int_t trigMap = 0;
     
     if (jp0 > 0 && jpAdc > jp0) trigMap |= 1 << 4;
     if (jp1 > 0 && jpAdc > jp1) trigMap |= 1 << 5;
-    if (jp2 > 0 && jpAdc > jp2) trigMap |= 1 << 6;
+    if (jp >=0 && jp <= 5 && jp2w > 0 && jpAdc > jp2w) {trigMap |= 1 << 6;}
+    else if (jp >=6 && jp <= 11 && jp2e > 0 && jpAdc > jp2e) {trigMap |= 1 << 6;}
+    else if (jp >= 12 && jp <=17 && jp2m > 0 && jpAdc > jp2m) {trigMap |= 1 << 6;}
     
     if (trigMap & 0x70) {
       LOG_DEBUG << "jet patch trigger found. ADC: " << jpAdc << endm;
@@ -715,6 +882,7 @@ void TStarJetPicoMaker::MuProcessTriggerObjects() {
       mEvent->AddTrigObj(&trigobj);
     }
   }
+  }
 }
 
 void TStarJetPicoMaker::PicoProcessTriggerObjects() {
@@ -725,8 +893,9 @@ Bool_t TStarJetPicoMaker::MuFillHeader() {
   
   /* fill triggers */
   std::vector<unsigned> triggerIds = mMuInputEvent->triggerIdCollection().nominal().triggerIds();
-  for(unsigned i = 0; i < triggerIds.size(); i++)
+  for(unsigned i = 0; i < triggerIds.size(); i++) {
     mEvent->GetHeader()->AddTriggerId(triggerIds[i]);
+  }
     
   /* calculate reaction plane with default primary cuts */
   mEvent->GetHeader()->SetReactionPlaneAngle(MuGetReactionPlane());
@@ -776,6 +945,8 @@ Bool_t TStarJetPicoMaker::MuFillHeader() {
   else                      mEvent->GetHeader()->SetvpdVz(9999);
   
   /* fill all other event level information */
+  mEvent->GetHeader()->SetBTofMult(mMuDst->numberOfBTofHit());
+
   mEvent->GetHeader()->SetEventId(mMuInputEvent->eventId());
   mEvent->GetHeader()->SetRunId(mMuInputEvent->runId());
   mEvent->GetHeader()->SetNGlobalTracks(mMuDst->numberOfGlobalTracks());
@@ -835,18 +1006,30 @@ Double_t TStarJetPicoMaker::PicoGetReactionPlane() {
 }
 
 void TStarJetPicoMaker::MuProcessMCEvent() {
-  int nCount = 0;
+
+  //int nCount = 0;
   
-  const StPtrVecMcTrack& mcTracks = mStMCEvent->primaryVertex()->daughters();
-  StMcTrackConstIterator mcTrkIter = mcTracks.begin();
+  //const StPtrVecMcTrack& mcTracks = mStMiniMcEvent->primaryVertex()->daughters();
+  //StMcTrackConstIterator mcTrkIter = mcTracks.begin();
+  TClonesArray* mcTracks = mStMiniMcEvent->tracks(MC);
+  TIter next(mcTracks);
   
-  for (; mcTrkIter != mcTracks.end(); ++mcTrkIter) {
-    StMcTrack* track = *mcTrkIter;
+  //const int nTracks = mcTracks.size();
+  
+  //for (; mcTrkIter != mcTracks.end(); ++mcTrkIter) {
+  while (StTinyMcTrack* track = (StTinyMcTrack *) next()) {
+    //StMcTrack* track = *mcTrkIter;
+    //StTinyMcTrack* track = (StTinyMcTrack*) mcTracks[i];
+  
     TStarJetPicoPrimaryTrack mTrack;
+    if (!track->isPrimary()) {
+      continue;//should effectively remove this non-primary from the event by not adding it to mMCEvent at the end of this for loop.
+    }
     
-    mTrack.SetPx(track->momentum().x());
-    mTrack.SetPy(track->momentum().y());
-    mTrack.SetPz(track->momentum().z());
+    
+    mTrack.SetPx(track->pxMc());
+    mTrack.SetPy(track->pyMc());
+    mTrack.SetPz(track->pzMc());
     mTrack.SetDCA(0);
     
     mTrack.SetNsigmaPion(0);
@@ -854,38 +1037,42 @@ void TStarJetPicoMaker::MuProcessMCEvent() {
     mTrack.SetNsigmaProton(0);
     mTrack.SetNsigmaElectron(0);
     
-    if(track->particleDefinition()){
-      mTrack.SetCharge(track->particleDefinition()->charge());
-      mTrack.SetdEdx(track->particleDefinition()->pdgEncoding());
+    //if it has a valid GEANT-3 code (https://www.star.bnl.gov/public/comp/simu/newsite/gstar/Manual/particle_id.html), convert this code to PDG ID and save the particle info in mTrack
+    if(track->geantId() > 0 && track->geantId() < 51) { //track->particleDefinition()){
+      //convert GEANT3 ID to PDG ID:
+      int pdg_id = (int) pdg->ConvertGeant3ToPdg(track->geantId());
+      mTrack.SetCharge(track->chargeMc());
+      mTrack.SetdEdx(pdg_id); //note to self: SetdEdx doesn't actually calculate dE/dx for this particle, it just holds the PDG id without modification.
     }
-    else{
+    else {
       LOG_DEBUG << "Particle with no encoding " << endm;
       mTrack.SetCharge(0);
       mTrack.SetdEdx(0);
     }
     
-    mTrack.SetNOfFittedHits(track->tpcHits().size());
+  
+    mTrack.SetNOfFittedHits(track->nHitMc());//tpcHits().size()); //nHitMc should hopefully be # of TPC hits.
     mTrack.SetNOfPossHits(52);
     mTrack.SetKey(track->key());
     mTrack.SetEtaDiffHitProjected(0);
     mTrack.SetPhiDiffHitProjected(0);
-    nCount++;
+    //  nCount++; //this was in the original version of the maker, but its purpose is to hand the SetNOfPrimaryTracks call the number of primaries, while the AddPrimaryTrack function already does that (see TStarJetPicoEvent::AddPrimaryTrack for proof).
     
     mMCEvent->AddPrimaryTrack(&mTrack);
-    
+  
   }
   
   
-  mMCEvent->GetHeader()->SetEventId(mStMCEvent->eventNumber());
-  mMCEvent->GetHeader()->SetRunId(mStMCEvent->runNumber());
-  mMCEvent->GetHeader()->SetReferenceMultiplicity(mStMCEvent->eventGeneratorFinalStateTracks());
-  mMCEvent->GetHeader()->SetNPrimaryTracks(nCount);
-  mMCEvent->GetHeader()->SetNGlobalTracks(mStMCEvent->numberOfPrimaryTracks());
-  mMCEvent->GetHeader()->SetReactionPlaneAngle(mStMCEvent->phiReactionPlane());
+    mMCEvent->GetHeader()->SetEventId(mStMiniMcEvent->eventId());//eventNumber());
+    mMCEvent->GetHeader()->SetRunId(mStMiniMcEvent->runId());//runNumber());
+    mMCEvent->GetHeader()->SetReferenceMultiplicity(mStMiniMcEvent->centralMult());//eventGeneratorFinalStateTracks());
+    //mMCEvent->GetHeader()->SetNPrimaryTracks(nCount);
+    mMCEvent->GetHeader()->SetNGlobalTracks(mStMiniMcEvent->nUncorrectedGlobals());//numberOfPrimaryTracks());
+    mMCEvent->GetHeader()->SetReactionPlaneAngle(mStMiniMcEvent->impactPhi());//phiReactionPlane());
   
-  mMCEvent->GetHeader()->SetPrimaryVertexX(mStMCEvent->primaryVertex()->position().x());
-  mMCEvent->GetHeader()->SetPrimaryVertexY(mStMCEvent->primaryVertex()->position().y());
-  mMCEvent->GetHeader()->SetPrimaryVertexZ(mStMCEvent->primaryVertex()->position().z());
+    mMCEvent->GetHeader()->SetPrimaryVertexX(mStMiniMcEvent->mcVertexX()); // this should be mcVertexX rather than VertexX, right? //primaryVertex()->position().x());
+    mMCEvent->GetHeader()->SetPrimaryVertexY(mStMiniMcEvent->mcVertexY());//primaryVertex()->position().y());
+    mMCEvent->GetHeader()->SetPrimaryVertexZ(mStMiniMcEvent->mcVertexZ());//primaryVertex()->position().z());
   
   mMCEvent->GetHeader()->SetCTBMultiplicity(0);
   mMCEvent->GetHeader()->SetPrimaryVertexMeanDipAngle(0);
@@ -895,8 +1082,8 @@ void TStarJetPicoMaker::MuProcessMCEvent() {
   mMCEvent->GetHeader()->SetNOfEMCPoints(0);
   mMCEvent->GetHeader()->SetNOfMatchedTowers(0);
   mMCEvent->GetHeader()->SetNOfTowers(0);
-  mMCEvent->GetHeader()->SetNOfPrimaryTracks(nCount);
-  mMCEvent->GetHeader()->SetNOfMatchedTracks(0);
+  //mMCEvent->GetHeader()->SetNOfPrimaryTracks(nCount);//see note next to "//nCount++"
+  mMCEvent->GetHeader()->SetNOfMatchedTracks(0); //why is this 0?
   
   return;
 }
@@ -951,4 +1138,47 @@ void TStarJetPicoMaker::MuProcessV0s() {
       mEvent->AddV0(&jetV0);
     }
   }
+}
+
+bool TStarJetPicoMaker::LoadEvent() {
+  mMuDst = mMuDstMaker->muDst();
+  if (mMuDst == nullptr) {
+    LOG_ERROR << "Could not load MuDst" << endm;
+    return kStErr;
+  }
+  mMuInputEvent = mMuDst->event();
+  if (mMuInputEvent == nullptr) {
+    LOG_ERROR << "Could not load MuDstEvent" << endm;
+    return kStErr;
+  }
+  
+  int eventID = mMuInputEvent->eventId();
+  int runID = mMuInputEvent->runId();
+  
+  // now try to match the event to a miniMC event in the chain
+  
+  int nTries = chain_->GetEntries();
+  
+  if (mMakeMC) {
+      if (mStMiniMcEvent->eventId() == eventID && mStMiniMcEvent->runId() == runID) return true;
+      while (nTries >= 0) {
+          current_++;
+          if (current_ >= chain_->GetEntries())
+              current_ = 0;
+          nTries--;
+
+          chain_->GetEntry(current_);
+
+          if (mStMiniMcEvent->eventId() == eventID &&
+                  mStMiniMcEvent->runId() == runID)
+              return true;
+      }
+
+      if (nTries < 0) {
+          LOG_ERROR << "could not match event to miniMC" << endm;
+          return false;
+      }
+  }
+  
+  return true;
 }

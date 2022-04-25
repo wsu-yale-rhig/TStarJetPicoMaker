@@ -1,4 +1,4 @@
- /* STAR Collaboration - Nick Elsey
+ /* STAR Collaboration - Nick Elsey -> I. Mooney, V. Verkest, & (currently most culpable) David Stewart
   
     Example of how to use TStarJetPicoMaker to produce
     a tree of TStarJetPicoEvents
@@ -25,6 +25,14 @@ void MakeTStarJetPico_example(int nEvents = 1e3,
                  int trigSet =0
                   )
 {
+  cout << " Running macro " << "MakeTStarJetPico_example" << endl;
+  cout << " Arguments: " << endl;
+  cout << "   nEvents: " << nEvents << endl;
+  cout << "   filelist: " << filelist << endl;
+  cout << "   nametag: " << nametag << endl;
+  cout << "   nFiles: " << nFiles << endl;
+  cout << "   trigSet: " << trigSet << endl;
+  cout << " end list of arguments " << endl;
   // load STAR libraries
   gROOT->Macro( "LoadLogger.C" );
   gROOT->Macro( "loadMuDst.C" );
@@ -35,6 +43,7 @@ void MakeTStarJetPico_example(int nEvents = 1e3,
   gSystem->Load( "StTpcDb" );
   gSystem->Load( "St_db_Maker" );
   gSystem->Load( "StDbUtilities" );
+  gSystem->Load( "StMiniMcEvent" );
   gSystem->Load( "StMcEvent" );
   gSystem->Load( "StMcEventMaker" );
   gSystem->Load( "StDaqLib" );
@@ -108,6 +117,14 @@ void MakeTStarJetPico_example(int nEvents = 1e3,
       jetPicoMaker->EventCuts()->AddTrigger(450018);
       jetPicoMaker->EventCuts()->AddTrigger(450012);
       jetPicoMaker->EventCuts()->AddTrigger(450022);
+    case 2:
+      jetPicoMaker->EventCuts()->AddTrigger(500008);
+      jetPicoMaker->EventCuts()->AddTrigger(500018);
+      jetPicoMaker->EventCuts()->AddTrigger(500205);
+      jetPicoMaker->EventCuts()->AddTrigger(500215);
+      jetPicoMaker->EventCuts()->AddTrigger(500206);
+      jetPicoMaker->EventCuts()->AddTrigger(500001);
+      jetPicoMaker->EventCuts()->AddTrigger(500004);
       break;
     default :
       break;
@@ -115,8 +132,9 @@ void MakeTStarJetPico_example(int nEvents = 1e3,
 
   // for each event, print the memory usage
   // helpful for debugging
-  StMemStat memory;
-  memory.PrintMem( NULL );
+  /* StMemStat memory; */ // ok, this was struct out in Isaac's version and is erroring for me
+  // I'm not sure what to do with it.
+  /* memory.PrintMem( NULL ); */
 	
   if ( chain->Init() ) { cout<<"StChain failed init: exiting"<<endl; return;}
   cout << "chain initialized" << endl;
@@ -130,7 +148,7 @@ void MakeTStarJetPico_example(int nEvents = 1e3,
       cout<<"done with event "<<i;
       cout<<"\tcpu: "<<timer.CpuTime()<<"\treal: "<<timer.RealTime()<<"\tratio: "<<timer.CpuTime()/timer.RealTime();//<<endl;
       timer.Start();
-      memory.PrintMem( NULL );
+      /* memory.PrintMem( NULL ); */
     }
     i++;
     chain->Clear();

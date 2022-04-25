@@ -26,12 +26,18 @@
 #include "StPicoEvent/StPicoEvent.h"
 #include "StTriggerUtilities/StTriggerSimuMaker.h"
 #include "StMcEvent/StMcEventTypes.hh"
+#include "StMiniMcEvent/StMiniMcEvent.h"
+#include "StMiniMcMaker/StMiniMcMaker.h"
 #include "StEmcUtil/geometry/StEmcGeom.h"
 #include "StEmcUtil/filters/StEmcFilter.h"
 #include "StEmcUtil/projection/StEmcPosition.h"
 
+#include "TDatabasePDG.h"
+
 #include "TStarJetEventCuts.hh"
 #include "TStarJetV0Cuts.hh"
+
+#include "TChain.h"
 
 #include <string>
 #include <vector>
@@ -63,7 +69,8 @@ struct BemcMatch {
 class TStarJetPicoMaker : public StMaker {
   
 public:
-  enum inputMode{NotSet=0, InputMuDst=1, InputPicoDst=2};
+  enum runMode { mode_MC, mode_Dst };
+  enum inputMode{ NotSet=0, InputMuDst=1, InputPicoDst=2};
   enum vertexMode{VpdOrRank=0, Vpd=1, Rank=2};
   enum towerMode{AcceptAllTowers=0, RejectBadTowerStatus=1};
   enum refMultCorrectionMode{FillNone=0, FillGRefAndRefMultCorr=1, FillGRefMultCorr=2, FillGRefMultCorrP16ID=3, FillGRefMultCorrVPDMB30=4, FillGRefMultCorrVPDNoVtx=5, FillRefMultCorr=6};
@@ -72,8 +79,17 @@ public:
      for a muDst or picoDst - if both are present for some
      reason, it will error out.
    */
-  TStarJetPicoMaker(std::string outFileName, inputMode input = NotSet, std::string name = "TStarJetPicoMaker");
+  runMode mRunMode; // note mMakeMC = (mRunMode == mode_MC);
+  /* bool isRunModeMC; // redundant with mRunMode == mode_MC; */
+
+
+  TStarJetPicoMaker(std::string outFileName, TChain *mcTree=nullptr, 
+          inputMode input = NotSet, std::string name = "TStarJetPicoMaker", 
+          int nFiles = 1, int trigSet = 0);
   ~TStarJetPicoMaker();
+    
+    // loads a new chain
+    bool LoadTree(TChain* chain);
   
   /* the default methods called by the StChain. 
      Init(): called once to initialize before Make() is called
@@ -92,7 +108,8 @@ public:
      If true, maker expects input to have both monte-carlo & GEANT data,
      and will produce a TTree for each. Currently only works for muDst
    */
-  void ProcessMC(bool flag) {mMakeMC = flag;}
+  /* void ProcessMC(bool flag) {mMakeMC = flag; is} */
+  // Note: flag above is automatically set if there are MC_trees
   
   /*  *********DEPRICATED USE WITH CAUTION*********
         included for backwards compatibility, but
@@ -166,6 +183,7 @@ public:
   Int_t  InitInput();
   void   InitMakers();
   void   InitOutput();
+  bool   LoadEvent();
   
   Int_t MakeMuDst();
   Int_t MakePicoDst();
@@ -210,6 +228,12 @@ public:
   std::string mOutFileName;
   TFile* mOutFile;
   
+    unsigned current_;
+    
+    TChain* chain_;
+
+  TDatabasePDG* pdg;
+    
   /* output TTrees, only attempts to fill mMCTree
      if mMakeMC flag is set
    */
@@ -225,7 +249,9 @@ public:
   StPicoDst*          mPicoDst;
   StPicoEvent*        mPicoInputEvent;
   StTriggerSimuMaker* mTriggerSimu;
-  StMcEvent*          mStMCEvent;
+  //StMcEvent*          mStMCEvent;
+    
+  StMiniMcEvent* mStMiniMcEvent;
   
   StEmcPosition*         mEMCPosition;
   StEmcGeom*             mBEMCGeom;

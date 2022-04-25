@@ -29,6 +29,7 @@ TStarJetPicoEventHeader::TStarJetPicoEventHeader()
   , fTriggerIdArray(__INITIAL_NUMBER_OF_TID)
   , fNOfTowerTrackMatched(0)
   , fNOfTowers(0)
+  , fBTofMult(0)
   , fNOfPrimaryTracks(0)
   , fNOfMatchedTracks(0)
   , fNOfFtpcPrimaryTracks(0)
@@ -90,6 +91,7 @@ TStarJetPicoEventHeader::TStarJetPicoEventHeader(const TStarJetPicoEventHeader &
   , fTriggerIdArray(t.fTriggerIdArray)
   , fNOfTowerTrackMatched(t.fNOfTowerTrackMatched)
   , fNOfTowers(t.fNOfTowers)
+  , fBTofMult(t.fBTofMult)
   , fNOfPrimaryTracks(t.fNOfPrimaryTracks)
   , fNOfMatchedTracks(t.fNOfMatchedTracks)
   , fNOfFtpcPrimaryTracks(t.fNOfFtpcPrimaryTracks)
@@ -139,7 +141,8 @@ TStarJetPicoEventHeader::~TStarJetPicoEventHeader()
 void TStarJetPicoEventHeader::Clear(Option_t */*Option*/)
 {
   fEventId = 0;              
-  fRunId = 0;                
+  fRunId = 0;            
+  fBTofMult = 0;
   fRefMult = 0;
   fRefMultRank0 = 0;
   fGRefMult = 0;

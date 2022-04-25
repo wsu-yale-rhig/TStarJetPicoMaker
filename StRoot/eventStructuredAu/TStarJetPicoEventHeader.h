@@ -41,6 +41,9 @@ class TStarJetPicoEventHeader : public TObject
   /// KK: Convenience lookup for individual trigger IDs, mainly to plot directly from the tree
   Bool_t HasTriggerId ( const Int_t id ) const;
 
+  //IM: Added BTOF multiplicity for use in AA
+  unsigned int   GetBTofMult()           const {return fBTofMult;}
+
   // These next three are the multiplicities of the branches...
   Int_t   GetNOfMatchedTowers()          const {return fNOfTowerTrackMatched;}
   Int_t   GetNOfTowers()                 const {return fNOfTowers;}
@@ -119,6 +122,8 @@ class TStarJetPicoEventHeader : public TObject
   void SetReactionPlaneAngle(Float_t val)        {fReactionPlaneAngle = val;}
   void AddTriggerId(Int_t tid);
   
+  void SetBTofMult(unsigned int val)             {fBTofMult = val;}
+
   // These next three are the multiplicities of the branches...
   void SetNOfMatchedTowers(Int_t val)            {fNOfTowerTrackMatched = val;}
   void SetNOfTowers(Int_t val)                   {fNOfTowers = val;}
@@ -194,7 +199,8 @@ class TStarJetPicoEventHeader : public TObject
   TArrayI         fTriggerIdArray;       // array of the trigger ids
   Int_t           fNOfTowerTrackMatched; // nCand;      //  number of all towers fired
   Int_t           fNOfTowers;            // nFlag;      // number of all towers fired
-
+  unsigned int    fBTofMult;             // BTOF multiplicity
+  
   Int_t           fNOfPrimaryTracks;     // number of primary tracks not matched to towers (used in Jet Finder)
   Int_t           fNOfMatchedTracks;     // number of primary tracks matched to towers(used in Jet Finder)
   Int_t           fNOfFtpcPrimaryTracks; // number of primary tracks in FTPC

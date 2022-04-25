@@ -20,6 +20,7 @@ void LoadLibs()
     "StarClassLibrary",
     "StTpcDb",
     "StEvent",
+    "StMiniMcEvent",
     "StDaqLib",
     "StEmcRawMaker",
     "StEmcADCtoEMaker",
@@ -30,6 +31,7 @@ void LoadLibs()
     "StEmcUtil",
     "StStrangeMuDstMaker",
     "StMuDSTMaker",
+    "StMiniMcMaker",
     
     "StDbLib",
     "StDbBroker",
