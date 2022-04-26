@@ -18,7 +18,7 @@
                 trigger IDs to be reproduced by the maker
 */
 
-void MakeTStarJetPico_example(int nEvents = 1e3,
+void MakeTStarJetPico(int nEvents = 1e3,
                  const char* filelist = "test.list",
                  const char* nametag  = "TStarJetPicoMaker_test",
                  int nFiles = 5,
