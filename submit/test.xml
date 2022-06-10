@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <!DOCTYPE note [
-<!-- <!ENTITY NFILES "1000"> -->
-<!-- <!ENTITY NEVENTS "50000"> -->
-<!ENTITY NFILES "all">
-<!ENTITY NEVENTS "1e9">
+<!ENTITY NFILES "10">
+<!ENTITY NEVENTS "50000">
+<!-- <!ENTITY NFILES "all"> -->
+<!-- <!ENTITY NEVENTS "1e9"> -->
 <!ENTITY MACRO "MakeTStarJetPico.cxx">
 <!-- <!ENTITY DAYNR "101-105"> -->
 <!ENTITY TRGSETUP "production_pAu200_2015">
@@ -48,7 +48,7 @@ TRIGGERS:   the set of triggers the Maker will reproduce: the mapping
 between this index & trigger set is defined in the root macro
 
 -->
-<job fileListSyntax="xrootd" maxFilesPerProcess="100" inputOrder="runnumber"  simulateSubmission="false">
+<job fileListSyntax="xrootd" maxFilesPerProcess="100" inputOrder="runnumber"  simulateSubmission="true">
     <command>
         <!-- setenv LOG log -->
         <!-- setenv ERR err -->
@@ -64,9 +64,9 @@ between this index & trigger set is defined in the root macro
         echo input file list:
         cat $FILELIST
 
-        echo ----------ls START-------------
-        ls -sailtR1 .
-        echo ----------ls END  -------------
+        echo ----------TREE START-------------
+        tree ./
+        echo ----------TREE END  -------------
         starver pro
         root4star -q -b &MACRO;\(&NEVENTS;,\"$FILELIST\",\"$JOBID\",$INPUTFILECOUNT,&TRIGGERS;\)
 
@@ -98,5 +98,5 @@ between this index & trigger set is defined in the root macro
 
     <stdout URL="file:&OUTDIR;/tmplogs/$JOBID.log" />
     <stderr URL="file:&OUTDIR;/tmplogs/$JOBID.err" />
-    <input  URL="catalog:star.bnl.gov?sanity=1,trgsetupname=&TRGSETUP;,production=&PROD;,filetype=&FILETYPE;,storage!=nfs,filename~st_physics" nFiles="&NFILES;" />
+    <input  URL="catalog:star.bnl.gov?sanity=1,trgsetupname=&TRGSETUP;,production=&PROD;,filetype=&FILETYPE;,storage=local,filename~st_physics" nFiles="&NFILES;" />
 </job>

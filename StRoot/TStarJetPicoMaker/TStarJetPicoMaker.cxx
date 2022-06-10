@@ -62,11 +62,12 @@ TStarJetPicoMaker::TStarJetPicoMaker(std::string outFileName, TChain* mcTree,
         if (!LoadTree(mcTree)) {
           LOG_INFO << "load chain failed" << endm;
           LOG_INFO << " No MC Tree, assumed not to use only Dst trees, not MC tress" << endm;
-          mRunMode = mode_Dst;
+          mMakeMC = false;
+          /* mRunMode = mode_Dst; */
         } else {
-          mRunMode = mode_MC;
+          mMakeMC = true;
         }
-        mMakeMC = (mRunMode == mode_MC);
+        /* mMakeMC = (mRunMode == mode_MC); */
         
         current_ = 0;
 
@@ -831,7 +832,7 @@ void TStarJetPicoMaker::MuProcessTriggerObjects() {
   Int_t jp2w = mTriggerSimu->bemc->barrelJetPatchTh(4);
   //Int_t jp2  = mTriggerSimu->bemc->barrelJetPatchTh(2);
   //Int_t jp2 = 9999; //TEMP!
-  LOG_INFO << "Jet Patch trigger thresholds: jp0 " << jp0 << " jp1: " << jp1 << " jp2e,m,w: " << jp2e << " " << jp2m << " " << jp2w << endm;
+  if (mlog_verbose > 5) LOG_INFO << "Jet Patch trigger thresholds: jp0 " << jp0 << " jp1: " << jp1 << " jp2e,m,w: " << jp2e << " " << jp2m << " " << jp2w << endm;
   
   /* lookup 12 jet patches & 6 overlap thresholds - no EEMC data saved */
   if (mMakeMC) {

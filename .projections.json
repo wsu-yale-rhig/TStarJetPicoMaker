@@ -1,0 +1,5 @@
+{
+    "*.log": {"alternate": "{}.err"},
+    "*.err": {"alternate": "{}.log"}
+}
+
